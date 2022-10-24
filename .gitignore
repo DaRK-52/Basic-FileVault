@@ -1,6 +1,9 @@
 # Ignore compile product #
+.*
 *.mod*
 *.ko
 *.o*
-.*
 Module.symvers
+
+# Keep .gitignore
+!/.gitignore
