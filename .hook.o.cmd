@@ -401,8 +401,8 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
     $(wildcard include/config/hz.h) \
   include/uapi/asm-generic/param.h \
   arch/x86/include/asm/timex.h \
-  arch/x86/include/asm/tsc.h \
     $(wildcard include/config/x86/tsc.h) \
+  arch/x86/include/asm/tsc.h \
   include/linux/uidgid.h \
     $(wildcard include/config/multiuser.h) \
     $(wildcard include/config/user/ns.h) \
@@ -442,7 +442,6 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
     $(wildcard include/config/memory/hotremove.h) \
     $(wildcard include/config/have/arch/pfn/valid.h) \
     $(wildcard include/config/holes/in/zone.h) \
-    $(wildcard include/config/arch/has/holes/memorymodel.h) \
   include/linux/wait.h \
   include/uapi/linux/wait.h \
   include/linux/numa.h \
@@ -639,8 +638,6 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
   include/linux/kobject_ns.h \
   include/linux/kref.h \
   include/linux/refcount.h \
-    $(wildcard include/config/refcount/full.h) \
-  arch/x86/include/asm/refcount.h \
   include/linux/moduleparam.h \
     $(wildcard include/config/alpha.h) \
     $(wildcard include/config/ia64.h) \
@@ -799,6 +796,7 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
   arch/x86/include/asm/fpu/xstate.h \
   include/linux/uaccess.h \
   arch/x86/include/asm/uaccess.h \
+    $(wildcard include/config/cc/has/asm/goto/tied/output.h) \
     $(wildcard include/config/x86/intel/usercopy.h) \
   arch/x86/include/asm/smap.h \
   arch/x86/include/asm/extable.h \
@@ -833,6 +831,7 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
     $(wildcard include/config/arch/has/set/direct/map.h) \
     $(wildcard include/config/hibernation.h) \
     $(wildcard include/config/hugetlbfs.h) \
+  include/linux/mmap_lock.h \
   include/linux/percpu-refcount.h \
   include/linux/bit_spinlock.h \
   include/linux/shrinker.h \
@@ -1152,6 +1151,17 @@ deps_/home/zhuwenjun/system_software/code/hook.o := \
   include/uapi/linux/rtc.h \
   include/linux/cdev.h \
   include/linux/fs_struct.h \
+  include/linux/kprobes.h \
+    $(wildcard include/config/kprobes.h) \
+    $(wildcard include/config/kretprobes.h) \
+    $(wildcard include/config/kprobes/sanity/test.h) \
+    $(wildcard include/config/optprobes.h) \
+    $(wildcard include/config/kprobes/on/ftrace.h) \
+  arch/x86/include/asm/kprobes.h \
+  include/asm-generic/kprobes.h \
+  arch/x86/include/asm/insn.h \
+  arch/x86/include/asm/inat.h \
+  arch/x86/include/asm/inat_types.h \
 
 /home/zhuwenjun/system_software/code/hook.o: $(deps_/home/zhuwenjun/system_software/code/hook.o)
 

@@ -1,0 +1,6 @@
+# Ignore compile product #
+*.mod*
+*.ko
+*.o*
+.*
+Module.symvers

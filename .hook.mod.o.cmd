@@ -463,8 +463,8 @@ deps_/home/zhuwenjun/system_software/code/hook.mod.o := \
     $(wildcard include/config/hz.h) \
   include/uapi/asm-generic/param.h \
   arch/x86/include/asm/timex.h \
-  arch/x86/include/asm/tsc.h \
     $(wildcard include/config/x86/tsc.h) \
+  arch/x86/include/asm/tsc.h \
   include/linux/jiffies.h \
   include/generated/timeconst.h \
   include/linux/timekeeping.h \
@@ -534,7 +534,6 @@ deps_/home/zhuwenjun/system_software/code/hook.mod.o := \
     $(wildcard include/config/memory/hotremove.h) \
     $(wildcard include/config/have/arch/pfn/valid.h) \
     $(wildcard include/config/holes/in/zone.h) \
-    $(wildcard include/config/arch/has/holes/memorymodel.h) \
   include/linux/nodemask.h \
   include/linux/pageblock-flags.h \
     $(wildcard include/config/hugetlb/page/size/variable.h) \
@@ -642,8 +641,6 @@ deps_/home/zhuwenjun/system_software/code/hook.mod.o := \
   include/linux/kobject_ns.h \
   include/linux/kref.h \
   include/linux/refcount.h \
-    $(wildcard include/config/refcount/full.h) \
-  arch/x86/include/asm/refcount.h \
   include/linux/moduleparam.h \
     $(wildcard include/config/alpha.h) \
     $(wildcard include/config/ia64.h) \
