@@ -37,50 +37,19 @@
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
 unsigned long *sys_call_table = NULL;
-unsigned long int kln_addr = 0;
-unsigned long (*kln_pointer)(const char *name) = NULL;
 sys_call_fp old_openat = NULL;
 sys_call_fp old_chdir = NULL;
+sys_call_fp old_rename = NULL;
+sys_call_fp old_unlinkat = NULL;
+sys_call_fp old_mkdir = NULL;
 unsigned int level;
 pte_t *pte;
 unsigned short auth_flag = 0;
 
-static struct kprobe kp0, kp1;
 struct timer_list timer;
 
-KPROBE_PRE_HANDLER(handler_pre0) {
-	kln_addr = (--regs->ip);
-	return 0;
-}
-
-KPROBE_PRE_HANDLER(handler_pre1) {
-	return 0;
-}
-
-static int do_register_kprobe(struct kprobe *kp, char *symbol_name, void *handler) {
-	int ret;
-	kp->symbol_name = symbol_name;
-	kp->pre_handler = handler;
-
-	ret = register_kprobe(kp);
-	return ret;
-}
-
-static void find_kln_addr(void) {
-	int ret;
-	ret = do_register_kprobe(&kp0, "kallsyms_lookup_name", handler_pre0);
-	ret = do_register_kprobe(&kp1, "kallsyms_lookup_name", handler_pre1);
-	unregister_kprobe(&kp0);
-  	unregister_kprobe(&kp1);
-	printk("KLN ADDR: 0x%lx\n", kln_addr);
-	kln_pointer = (unsigned long (*)(const char *name)) kln_addr;
-	return;
-}
-
-unsigned long *find_sys_call_table(void) {
-	printk("KLN ADDR is at 0x%lx\n", kln_pointer("sys_call_table"));
-	return (unsigned long *) kln_pointer("sys_call_table");
-}
+void find_kln_addr(void);
+unsigned long *find_sys_call_table(void);
 
 asmlinkage long hooked_openat(struct pt_regs *regs) {
 	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
@@ -104,6 +73,18 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 	return old_chdir(regs);
 }
 
+asmlinkage long hooked_rename(struct pt_regs *regs) {
+	return old_rename(regs);
+}
+
+asmlinkage long hooked_unlinkat(struct pt_regs *regs) {
+	return old_unlinkat(regs);
+}
+
+asmlinkage long hooked_mkdir(struct pt_regs *regs) {
+	return old_mkdir(regs);
+}
+
 void reset_auth_flag(struct timer_list *timer01) {
 	auth_flag = 0;
 	printk("Timer success!\n");
@@ -118,6 +99,39 @@ void start_timer(void) {
 	mod_timer(&timer, timer.expires);
 }
 
+void modify_sys_call_table(void) {
+	// save old system call
+	old_openat = ((sys_call_fp *)(sys_call_table))[__NR_openat];
+	old_chdir = ((sys_call_fp *)(sys_call_table))[__NR_chdir];
+	old_rename = ((sys_call_fp *)(sys_call_table))[__NR_rename];
+	old_unlinkat = ((sys_call_fp *)(sys_call_table))[__NR_unlinkat];
+	old_mkdir = ((sys_call_fp *)(sys_call_table))[__NR_mkdir];
+
+	// find page table entry of system call table
+	// and allow modifying it
+	pte = lookup_address((unsigned long)sys_call_table, &level);
+	printk("Page table entry is at 0x%lx\n", (unsigned long)pte);
+	// set flag of pte atomically
+	set_pte_atomic(pte, pte_mkwrite(*pte));
+	sys_call_table[__NR_openat] = (unsigned long) hooked_openat;
+	sys_call_table[__NR_chdir] = (unsigned long) hooked_chdir;
+	sys_call_table[__NR_rename] = (unsigned long) hooked_rename;
+	sys_call_table[__NR_unlinkat] = (unsigned long) hooked_unlinkat;
+	sys_call_table[__NR_mkdir] = (unsigned long) hooked_mkdir;
+	set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
+}
+
+void restore_sys_call_table(void) {
+	pte = lookup_address((unsigned long)sys_call_table, &level);
+	set_pte_atomic(pte, pte_mkwrite(*pte));
+	sys_call_table[__NR_openat] = (unsigned long) old_openat;
+	sys_call_table[__NR_chdir] = (unsigned long) old_chdir;
+	sys_call_table[__NR_rename] = (unsigned long) old_rename;
+	sys_call_table[__NR_unlinkat] = (unsigned long) old_unlinkat;
+	sys_call_table[__NR_mkdir] = (unsigned long) old_mkdir;
+	set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
+}
+
 static int hooked_init(void) {
 	printk(LOG_LEVEL "init");
 	init_timer();
@@ -128,31 +142,13 @@ static int hooked_init(void) {
 		return 0;
 	}
 	printk("System call table is at 0x%lx 0x%lx\n", *sys_call_table, (unsigned long) sys_call_table);
-	
-	// save old system call
-	old_openat = ((sys_call_fp *)(sys_call_table))[__NR_openat];
-	old_chdir = ((sys_call_fp *)(sys_call_table))[__NR_chdir];
-
-	// find page table entry of system call table
-	// and allow modifying it
-	pte = lookup_address((unsigned long)sys_call_table, &level);
-	printk("Page table entry is at 0x%lx\n", (unsigned long)pte);
-	// set flag of pte atomically
-	// set flag of pte atomically
-	set_pte_atomic(pte, pte_mkwrite(*pte));
-	sys_call_table[__NR_openat] = (unsigned long) hooked_openat;
-	sys_call_table[__NR_chdir] = (unsigned long) hooked_chdir;
-	set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
+	modify_sys_call_table();
 	return 0;
 }
 
 static void hooked_exit(void) {
 	del_timer(&timer);
-	pte = lookup_address((unsigned long)sys_call_table, &level);
-	set_pte_atomic(pte, pte_mkwrite(*pte));
-	sys_call_table[__NR_openat] = (unsigned long) old_openat;
-	sys_call_table[__NR_chdir] = (unsigned long) old_chdir;
-	set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
+	restore_sys_call_table();
 	printk(LOG_LEVEL "exit");
 }
 
