@@ -26,10 +26,13 @@
 #include <linux/module.h>
 #include <linux/ptrace.h>
 #include <linux/timer.h>
+#include <net/sock.h>
+#include <net/netlink.h>
 
 #define LOG_LEVEL KERN_ALERT
 #define KPROBE_PRE_HANDLER(fname) static int __kprobes fname(struct kprobe *p, struct pt_regs *regs)
 #define VAULT_PATH "/home/zhuwenjun/secret"
+#define NL_PASSWD 25
 #define MAX_LENGTH 256
 #define TIMEOUT 900
 
@@ -47,8 +50,10 @@ pte_t *pte;
 unsigned short auth_flag = 0;
 
 struct timer_list timer;
+struct sock *nl_sock = NULL;
 
 void find_kln_addr(void);
+void start_timer(void);
 unsigned long *find_sys_call_table(void);
 
 asmlinkage long hooked_openat(struct pt_regs *regs) {
@@ -83,6 +88,14 @@ asmlinkage long hooked_unlinkat(struct pt_regs *regs) {
 
 asmlinkage long hooked_mkdir(struct pt_regs *regs) {
 	return old_mkdir(regs);
+}
+
+void set_auth_flag(struct sk_buff *__skb) {
+	if (auth_flag == 1)
+		return;
+	auth_flag = 1;
+	printk("Set auth flag success!\n");
+	start_timer();
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
@@ -121,6 +134,14 @@ void modify_sys_call_table(void) {
 	set_pte_atomic(pte, pte_clear_flags(*pte, _PAGE_RW));
 }
 
+void init_nl_auth(void) {
+	struct netlink_kernel_cfg cfg = { .input = set_auth_flag };
+	nl_sock = netlink_kernel_create(&init_net, NL_PASSWD, &cfg);
+	printk("nl_sock = %ld\n", (unsigned long) nl_sock);
+	printk("Netlink Authorization inited!\n");
+	return;
+}
+
 void restore_sys_call_table(void) {
 	pte = lookup_address((unsigned long)sys_call_table, &level);
 	set_pte_atomic(pte, pte_mkwrite(*pte));
@@ -143,12 +164,16 @@ static int hooked_init(void) {
 	}
 	printk("System call table is at 0x%lx 0x%lx\n", *sys_call_table, (unsigned long) sys_call_table);
 	modify_sys_call_table();
+	init_nl_auth();
 	return 0;
 }
 
 static void hooked_exit(void) {
 	del_timer(&timer);
 	restore_sys_call_table();
+	if (nl_sock != NULL) {
+		sock_release(nl_sock->sk_socket);
+	}
 	printk(LOG_LEVEL "exit");
 }
 
