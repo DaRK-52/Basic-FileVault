@@ -36,31 +36,31 @@ void set_auth_flag_true(void) {
 	struct nlmsghdr *nlh = NULL;
 	struct msghdr msg;
 	struct iovec iov;
-	int sockfd, ret;
+	int sockfd;
 	
 	sockfd = socket(AF_NETLINK, SOCK_RAW, NL_PASSWD);
 	memset(&src_addr, 0, sizeof(src_addr));
 	memset(&dest_addr, 0, sizeof(dest_addr));
+	memset(&msg, 0, sizeof(msg));
 	src_addr.nl_family = AF_NETLINK;
 	src_addr.nl_pid = 100;
 	src_addr.nl_groups = 0;
-	ret = bind(sockfd, (struct sockaddr *)&src_addr, sizeof(src_addr));
+	bind(sockfd, (struct sockaddr *)&src_addr, sizeof(src_addr));
 	nlh = (struct nlmsghdr *) malloc(NLMSG_SPACE(MAX_PAYLOAD));
 	nlh->nlmsg_pid = 100;
 	nlh->nlmsg_flags = 0;
-	strcpy(NLMSG_DATA(nlh), "Hello");
+	strcpy(NLMSG_DATA(nlh), "");
 	iov.iov_base = (void *)nlh;
 	iov.iov_len = NLMSG_SPACE(MAX_PAYLOAD);
 	dest_addr.nl_family = AF_NETLINK;
 	dest_addr.nl_pid = 0;
 	dest_addr.nl_groups = 0;
-	memset(&msg, 0, sizeof(msg));
 	msg.msg_name = (void *)&dest_addr;
 	msg.msg_namelen = sizeof(dest_addr);
 	msg.msg_iov = &iov;
 	msg.msg_iovlen = 1;
 	
-	ret = sendmsg(sockfd, &msg, 0);
+	sendmsg(sockfd, &msg, 0);
 	close(sockfd);
 	return;
 }
