@@ -32,11 +32,12 @@
 #include <linux/namei.h>
 
 #define VAULT_PATH "/home/zhuwenjun/secret"
+#define SLASH "/"
 #define MAX_LENGTH 256
 
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
-extern unsigned short auth_flag;
+unsigned short auth_flag = 0;
 
 sys_call_fp old_openat = NULL;
 sys_call_fp old_chdir = NULL;
@@ -54,18 +55,20 @@ asmlinkage long hooked_openat(struct pt_regs *regs) {
 }
 
 asmlinkage long hooked_chdir(struct pt_regs *regs) {
-	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
-	/*
+	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL), *cwd = NULL, *buf = NULL;
 	struct path path;
-	unsigned int lookup_flags = 0xffffff;
-	int error;*/
 	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
-	/*
-	error = user_path_at(AT_FDCWD, name, lookup_flags, &path);
-	if (error)
-		printk("GGGGGGG\n");
-	else
-		printk("CWD: %s\n", path.dentry->d_name.name);*/
+	get_fs_pwd(current->fs, &path);
+	buf = kmalloc(PATH_MAX, GFP_ATOMIC | __GFP_NOWARN | __GFP_ZERO);
+	cwd = d_path(&path, buf, PATH_MAX);
+	kfree(buf);
+	if (strncmp(cwd + strlen(cwd) - 1, "/", 1) != 0) {
+		strcat(cwd, "/");
+	}
+	if (strncmp(name, "/", 1) != 0) {
+		strcat(cwd, name);
+		name = cwd;
+	}
 
 	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) == 0) {
 		if (auth_flag == 0) {

@@ -45,9 +45,9 @@ extern sys_call_fp old_chdir;
 extern sys_call_fp old_rename;
 extern sys_call_fp old_unlinkat;
 extern sys_call_fp old_mkdir;
+extern unsigned short auth_flag;
 unsigned int level;
 pte_t *pte;
-unsigned short auth_flag = 0;
 
 struct timer_list timer;
 struct sock *nl_sock = NULL;
@@ -71,7 +71,7 @@ void set_auth_flag(struct sk_buff *__skb) {
 		return;
 	auth_flag = 1;
 	printk("Set auth flag success!\n");
-	start_timer();
+	// start_timer();
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
