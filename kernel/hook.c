@@ -34,6 +34,8 @@
 #define VAULT_PATH "/home/zhuwenjun/secret"
 #define SLASH "/"
 #define MAX_LENGTH 256
+#define PERMITTED 1
+#define UNPERMITTED 0
 
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
@@ -45,19 +47,22 @@ sys_call_fp old_rename = NULL;
 sys_call_fp old_unlinkat = NULL;
 sys_call_fp old_mkdir = NULL;
 
-asmlinkage long hooked_openat(struct pt_regs *regs) {
-	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
-	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
-	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) == 0) {
-		printk("Attempt to intrude secret directory\n");
-	}
-	return old_openat(regs);
+// name means the absolute path name like /etc/passwd
+int check_privilege(char *name) {
+	printk("name: %s\n", name);
+	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) != 0)
+		return PERMITTED;
+	printk("auth_flag = %d\n", auth_flag);
+	return auth_flag;
 }
 
-asmlinkage long hooked_chdir(struct pt_regs *regs) {
-	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL), *cwd = NULL, *buf = NULL;
+// convert relative path to absolute path
+void convert_to_absolute_path(char *dst_path) {
+	char *cwd = NULL, *buf = NULL;
 	struct path path;
-	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
+	
+	if (strncmp(dst_path, "/", 1) == 0)	
+		return;
 	get_fs_pwd(current->fs, &path);
 	buf = kmalloc(PATH_MAX, GFP_ATOMIC | __GFP_NOWARN | __GFP_ZERO);
 	cwd = d_path(&path, buf, PATH_MAX);
@@ -65,18 +70,32 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 	if (strncmp(cwd + strlen(cwd) - 1, "/", 1) != 0) {
 		strcat(cwd, "/");
 	}
-	if (strncmp(name, "/", 1) != 0) {
-		strcat(cwd, name);
-		name = cwd;
-	}
+	strcat(cwd, dst_path);
+	strcpy(dst_path, cwd);
+	printk("dst_path: %s\n", dst_path);
+}
 
+asmlinkage long hooked_openat(struct pt_regs *regs) {
+	/* 
+	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
 	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) == 0) {
-		if (auth_flag == 0) {
-			printk("Permission Denied. Consider using Basic File Vault to get permission.\n");
-			return -1;
-		}
+		printk("Attempt to intrude secret directory\n");
+	} */
+	return old_openat(regs);
+}
+
+asmlinkage long hooked_chdir(struct pt_regs *regs) {
+	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+
+	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
+	convert_to_absolute_path(name);
+	if (name != NULL && check_privilege(name) == UNPERMITTED) {
+		printk("Permission Denied. Consider using Basic File Vault to get permission.\n");
+		return -1;
 	}
 	printk("Chdir to %s\n", name);
+	kfree(name);
 	return old_chdir(regs);
 }
 

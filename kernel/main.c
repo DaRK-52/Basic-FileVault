@@ -32,9 +32,11 @@
 #define LOG_LEVEL KERN_ALERT
 #define KPROBE_PRE_HANDLER(fname) static int __kprobes fname(struct kprobe *p, struct pt_regs *regs)
 #define VAULT_PATH "/home/zhuwenjun/secret"
+#define PERMITTED 1
+#define UNPERMITTED 0
 #define NL_PASSWD 25
 #define MAX_LENGTH 256
-#define TIMEOUT 900
+#define TIMEOUT 20 * 1000
 
 // sys_call_fp means system call function pointer
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
@@ -67,25 +69,28 @@ asmlinkage long hooked_unlinkat(struct pt_regs *regs);
 asmlinkage long hooked_mkdir(struct pt_regs *regs);
 
 void set_auth_flag(struct sk_buff *__skb) {
-	if (auth_flag == 1)
+	if (auth_flag == PERMITTED)
 		return;
-	auth_flag = 1;
+	auth_flag = PERMITTED;
 	printk("Set auth flag success!\n");
-	// start_timer();
+	start_timer();
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
-	auth_flag = 0;
+	auth_flag = UNPERMITTED;
 	printk("Timer success!\n");
 }
 
 void init_timer(void) {
-	timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
-	timer_setup(&timer, reset_auth_flag, 0);
+	// timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
+	// timer_setup(&timer, reset_auth_flag, 0);
 }
 
 void start_timer(void) {
-	mod_timer(&timer, timer.expires);
+	del_timer(&timer);
+	timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
+	timer_setup(&timer, reset_auth_flag, 0);
+	add_timer(&timer);
 }
 
 void modify_sys_call_table(void) {
