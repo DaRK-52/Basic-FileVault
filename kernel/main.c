@@ -34,7 +34,7 @@
 #define VAULT_PATH "/home/zhuwenjun/secret"
 #define NL_PASSWD 25
 #define MAX_LENGTH 256
-#define TIMEOUT 900
+#define TIMEOUT 20 * 1000
 
 // sys_call_fp means system call function pointer
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
@@ -85,6 +85,7 @@ void init_timer(void) {
 }
 
 void start_timer(void) {
+	timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
 	mod_timer(&timer, timer.expires);
 }
 
