@@ -57,55 +57,31 @@ int check_privilege(char *name) {
 	return auth_flag;
 }
 
-// temporarily solution
-// need to reconsider later
-int check_contains_secret(char *s) {
-	int length = strlen(s);
-	int i;
-	for (i = 0;i < length - strlen(SECRET);i++) {
-		if (strncmp(s + i, SECRET, strlen(SECRET)) == 0)
-			return 1;
-	}
-	return 0;
-}
-
 // convert relative path to absolute path
 char* convert_to_absolute_path(char *dst_path) {
-	char *cwd = NULL, *buf = NULL, *tmp_dst_path = dst_path;
+	char *cwd = NULL, *buf = NULL, *pre_path = dst_path;
 	struct path path;
 	
-	printk("Convert begin!\n");
 	if (strncmp(dst_path, SLASH, strlen(SLASH)) == 0) {
-		printk("No need to convert!\n");
-		return dst_path;
+		// printk("No need to convert!\n");
+		return pre_path;
 	}
-	// if (!check_contains_secret(dst_path))
-	//	return;
 	dst_path = kmalloc(PATH_MAX, GFP_KERNEL);
 	get_fs_pwd(current->fs, &path);
 	buf = kmalloc(PATH_MAX, GFP_ATOMIC | __GFP_NOWARN | __GFP_ZERO);
 	cwd = d_path(&path, buf, PATH_MAX);
 	if (cwd == NULL || buf == NULL) {
-		printk("Error2!\n");
-		return tmp_dst_path;
+		printk("Error! cwd or buf == NULL\n");
+		return pre_path;
 	}
-	printk("cwd1: %s addr: %ld\n", cwd, (unsigned long) cwd);
 	kfree(buf);
-	printk("cwd2: %s addr: %ld\n", cwd, (unsigned long) cwd);
-	buf = tmp_dst_path;
-	printk("cwd3: %s addr: %ld\n", cwd, (unsigned long) cwd);
-	printk("cwd4: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	buf = pre_path;
 	strcat(dst_path, cwd);
-	// printk("cwd2: %s dst_path: %s\n", cwd, dst_path);
-	if (strncmp(cwd + strlen(cwd) - 1, "/", 1) != 0) {
-		strcat(dst_path, "/");
+	if (strncmp(cwd + strlen(cwd) - 1, SLASH, strlen(SLASH)) != 0) {
+		strcat(dst_path, SLASH);
 	}
 	
-	printk("cwd5: %s addr: %ld\n", cwd, (unsigned long) cwd);
 	strcat(dst_path, buf);
-	// strcpy(dst_path, cwd);
-	
-	printk("cwd6: %s, addr: %ld\n", cwd, (unsigned long) cwd);
 	printk("dst_path: %s\n", dst_path);
 	return dst_path;
 }
@@ -129,7 +105,7 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 		printk("Permission Denied. Consider using Basic File Vault to get permission.\n");
 		return -1;
 	}
-	printk("Chdir to %s\n", name);
+	// printk("Chdir to %s\n", name);
 	kfree(name);
 	return old_chdir(regs);
 }
