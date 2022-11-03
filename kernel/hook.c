@@ -33,6 +33,7 @@
 
 #define VAULT_PATH "/home/zhuwenjun/secret"
 #define SLASH "/"
+#define SECRET "secret"
 #define MAX_LENGTH 256
 #define PERMITTED 1
 #define UNPERMITTED 0
@@ -56,23 +57,57 @@ int check_privilege(char *name) {
 	return auth_flag;
 }
 
+// temporarily solution
+// need to reconsider later
+int check_contains_secret(char *s) {
+	int length = strlen(s);
+	int i;
+	for (i = 0;i < length - strlen(SECRET);i++) {
+		if (strncmp(s + i, SECRET, strlen(SECRET)) == 0)
+			return 1;
+	}
+	return 0;
+}
+
 // convert relative path to absolute path
-void convert_to_absolute_path(char *dst_path) {
-	char *cwd = NULL, *buf = NULL;
+char* convert_to_absolute_path(char *dst_path) {
+	char *cwd = NULL, *buf = NULL, *tmp_dst_path = dst_path;
 	struct path path;
 	
-	if (strncmp(dst_path, "/", 1) == 0)	
-		return;
+	printk("Convert begin!\n");
+	if (strncmp(dst_path, SLASH, strlen(SLASH)) == 0) {
+		printk("No need to convert!\n");
+		return dst_path;
+	}
+	// if (!check_contains_secret(dst_path))
+	//	return;
+	dst_path = kmalloc(PATH_MAX, GFP_KERNEL);
 	get_fs_pwd(current->fs, &path);
 	buf = kmalloc(PATH_MAX, GFP_ATOMIC | __GFP_NOWARN | __GFP_ZERO);
 	cwd = d_path(&path, buf, PATH_MAX);
-	kfree(buf);
-	if (strncmp(cwd + strlen(cwd) - 1, "/", 1) != 0) {
-		strcat(cwd, "/");
+	if (cwd == NULL || buf == NULL) {
+		printk("Error2!\n");
+		return tmp_dst_path;
 	}
-	strcat(cwd, dst_path);
-	strcpy(dst_path, cwd);
+	printk("cwd1: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	kfree(buf);
+	printk("cwd2: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	buf = tmp_dst_path;
+	printk("cwd3: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	printk("cwd4: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	strcat(dst_path, cwd);
+	// printk("cwd2: %s dst_path: %s\n", cwd, dst_path);
+	if (strncmp(cwd + strlen(cwd) - 1, "/", 1) != 0) {
+		strcat(dst_path, "/");
+	}
+	
+	printk("cwd5: %s addr: %ld\n", cwd, (unsigned long) cwd);
+	strcat(dst_path, buf);
+	// strcpy(dst_path, cwd);
+	
+	printk("cwd6: %s, addr: %ld\n", cwd, (unsigned long) cwd);
 	printk("dst_path: %s\n", dst_path);
+	return dst_path;
 }
 
 asmlinkage long hooked_openat(struct pt_regs *regs) {
@@ -89,7 +124,7 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
 
 	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
-	convert_to_absolute_path(name);
+	name = convert_to_absolute_path(name);
 	if (name != NULL && check_privilege(name) == UNPERMITTED) {
 		printk("Permission Denied. Consider using Basic File Vault to get permission.\n");
 		return -1;
