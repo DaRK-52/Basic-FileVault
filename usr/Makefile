@@ -1,2 +1,2 @@
-vaultkey: vaultkey.c
-	cc vaultkey.c -o vaultkey -lcrypto -lssl
+vault_manager: vault_manager.c
+	cc vault_manager.c -o vault_manager -lcrypto -lssl

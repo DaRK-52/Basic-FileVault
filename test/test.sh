@@ -7,12 +7,10 @@ vault_rpath="secret"
 
 start_test(){
     cd ${kmod_path}
-    echo `pwd`
     insmod ${kmod_name}
 }
 
 check_dir(){
-    echo `pwd`
     if [[ "`pwd`" != "${vault_apath}" ]];
     then
         echo "Chdir Failed!"
@@ -49,7 +47,7 @@ test_unlink(){
 }
 
 test_rename(){
-    
+
 }
 
 end_test(){

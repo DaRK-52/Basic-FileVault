@@ -1,0 +1,7 @@
+Welcome to Vault Manager!
+Description: Vault Manager is an application that you can set your vault password, set your vault path.
+Usage: The options are as followed.
+        h    print basic help of Vault Manager.
+        p    input the password so that you can access to vault.
+        cp   change the password.
+        exit exit the program

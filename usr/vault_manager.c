@@ -15,7 +15,15 @@
 #define MD5_SIZE 16
 #define MAX_PAYLOAD 1024
 #define PASSWD_MD5 "e10adc3949ba59abbe56e057f20f883"
+#define PASSWD_FILE_PATH "/home/zhuwenjun/secret/.passwd.md5"
+#define COMMAND_HELP "h"
+#define COMMAND_PASSWD "p"
+#define COMMAND_CP "cp"
+#define COMMAND_EXIT "exit"
+#define MAX_LENGTH 256
 #define TRUE 1
+
+char *correct_passwd_md5;
 
 void md5_calc(char *passwd, char *dst_str) {
 	MD5_CTX md5;
@@ -65,27 +73,65 @@ void set_auth_flag_true(void) {
 	return;
 }
 
-int main(int argc, char *argv[]) {
-	char *passwd = malloc(sizeof(char *)), *passwd_md5 = malloc(sizeof(char *));
+void print_help() {
+	char buf[255];
+	FILE *help_file;
+	help_file = fopen("help.txt", "r");
+	while(fgets(buf, MAX_LENGTH, help_file) != NULL) {
+		printf("%s", buf);
+	}
+	printf("\n");
+	fclose(help_file);
+}
+
+int input_passwd() {
+	char *passwd = malloc(sizeof(char *) * MAX_LENGTH), *passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
 	int count = 0;
-	printf("Please input your password.\n");
+
 	while (TRUE) {
+		printf("Please input your password!\n");
 		system("stty -echo");
 		scanf("%s", passwd);
 		system("stty echo");
 		md5_calc(passwd, passwd_md5);
-		if (strncmp(passwd_md5, PASSWD_MD5, strlen(PASSWD_MD5)) == 0) {
+		if (strncmp(passwd_md5, correct_passwd_md5, strlen(correct_passwd_md5)) == 0) {
 			set_auth_flag_true();
 			printf("Welcome to basic file vault!\n");
-			break;
+			return 1;
 		} else {
 			count++;
 			if (count >= 5) {
 				printf("Too many errors!\n");
-				break;
+				return 0;
 			}
 			printf("Wrong password! Please try again!\n");
 		}
 	}
+	free(passwd);
+	free(passwd_md5);
+}
+
+int main(int argc, char *argv[]) {
+	FILE *passwd_file;
+	char *cmd = malloc(sizeof(char *) * MAX_LENGTH);
+
+	print_help();
+	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
+	passwd_file = fopen(PASSWD_FILE_PATH, "r");
+	fscanf(passwd_file, "%s", correct_passwd_md5);
+
+	while (TRUE) {
+		printf("> ");
+		scanf("%s", cmd);
+		if (strcmp(cmd, COMMAND_HELP) == 0)
+			print_help();
+		else if (strcmp(cmd, COMMAND_PASSWD) == 0) {
+			if (input_passwd())
+				break;
+		} else if (strcmp(cmd, COMMAND_EXIT) == 0)
+			break;
+	}
+	free(cmd);
+	fclose(passwd_file);
 	return 0;
 }
