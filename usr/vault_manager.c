@@ -14,8 +14,8 @@
 #define NL_PASSWD 25
 #define MD5_SIZE 16
 #define MAX_PAYLOAD 1024
-#define PASSWD_MD5 "e10adc3949ba59abbe56e057f20f883"
-#define PASSWD_FILE_PATH "/home/zhuwenjun/secret/.passwd.md5"
+#define PASSWD_MD5_PATH "/.passwd.md5"
+#define VP_FILE_PATH "~/.vault.path"
 #define COMMAND_HELP "h"
 #define COMMAND_PASSWD "p"
 #define COMMAND_CP "cp"
@@ -111,13 +111,25 @@ int input_passwd() {
 	free(passwd_md5);
 }
 
+void just_for_test(int argc) {
+	if (argc > 1)
+		set_auth_flag_true();
+}
+
 int main(int argc, char *argv[]) {
 	FILE *passwd_file;
+	FILE *vp_file;
 	char *cmd = malloc(sizeof(char *) * MAX_LENGTH);
+	char *passwd_file_path = malloc(sizeof(char *) * MAX_LENGTH);
+
+	just_for_test(argc);
 
 	print_help();
 	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
-	passwd_file = fopen(PASSWD_FILE_PATH, "r");
+	vp_file = fopen(VP_FILE_PATH, "r");
+	fscanf(vp_file, "%s", passwd_file_path);
+	strcat(passwd_file_path, PASSWD_MD5_PATH);
+	passwd_file = fopen(passwd_file_path, "r");
 	fscanf(passwd_file, "%s", correct_passwd_md5);
 
 	while (TRUE) {
