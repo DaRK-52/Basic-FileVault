@@ -15,15 +15,18 @@
 #define MD5_SIZE 16
 #define MAX_PAYLOAD 1024
 #define PASSWD_MD5_PATH "/.passwd.md5"
-#define VP_FILE_PATH "~/.vault.path"
+#define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
 #define COMMAND_HELP "h"
 #define COMMAND_PASSWD "p"
 #define COMMAND_CP "cp"
 #define COMMAND_EXIT "exit"
-#define MAX_LENGTH 256
+#define MAX_LENGTH 64
 #define TRUE 1
 
 char *correct_passwd_md5;
+char *passwd_file_path;
+FILE *passwd_file;
+FILE *vp_file;
 
 void md5_calc(char *passwd, char *dst_str) {
 	MD5_CTX md5;
@@ -84,6 +87,17 @@ void print_help() {
 	fclose(help_file);
 }
 
+void get_correct_passwd_md5() {
+	passwd_file_path = malloc(sizeof(char *) * MAX_LENGTH);
+	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
+	vp_file = fopen(VP_FILE_PATH, "r");
+	fscanf(vp_file, "%s", passwd_file_path);
+	strcat(passwd_file_path, PASSWD_MD5_PATH);
+	passwd_file = fopen(passwd_file_path, "r");
+	fscanf(passwd_file, "%s", correct_passwd_md5);
+	fclose(passwd_file);
+}
+
 int input_passwd() {
 	char *passwd = malloc(sizeof(char *) * MAX_LENGTH), *passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
 	int count = 0;
@@ -111,39 +125,58 @@ int input_passwd() {
 	free(passwd_md5);
 }
 
+void change_passwd() {
+	char *new_passwd1 = malloc(sizeof(char *) * MAX_LENGTH),
+		*new_passwd2 = malloc(sizeof(char *) * MAX_LENGTH),
+		*new_passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
+	passwd_file = fopen(passwd_file_path, "w");
+	printf("Please input new password!\n");
+	system("stty -echo");
+	scanf("%s", new_passwd1);
+	printf("Please input new passwd again!\n");
+	scanf("%s", new_passwd2);
+	system("stty echo");
+	if (strcmp(new_passwd1, new_passwd2) != 0) {
+		printf("Error! Entered passwords differ!\n");
+	}
+	md5_calc(new_passwd1, new_passwd_md5);
+	fprintf(passwd_file, "%s", new_passwd_md5);
+	printf("Password is changed successfully!\n");
+	correct_passwd_md5 = new_passwd_md5;
+	free(new_passwd1);
+	free(new_passwd2);
+	fclose(passwd_file);
+}
+
 void just_for_test(int argc) {
 	if (argc > 1)
 		set_auth_flag_true();
 }
 
 int main(int argc, char *argv[]) {
-	FILE *passwd_file;
-	FILE *vp_file;
 	char *cmd = malloc(sizeof(char *) * MAX_LENGTH);
-	char *passwd_file_path = malloc(sizeof(char *) * MAX_LENGTH);
 
 	just_for_test(argc);
 
 	print_help();
-	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
-	vp_file = fopen(VP_FILE_PATH, "r");
-	fscanf(vp_file, "%s", passwd_file_path);
-	strcat(passwd_file_path, PASSWD_MD5_PATH);
-	passwd_file = fopen(passwd_file_path, "r");
-	fscanf(passwd_file, "%s", correct_passwd_md5);
-
+	get_correct_passwd_md5();
 	while (TRUE) {
 		printf("> ");
 		scanf("%s", cmd);
-		if (strcmp(cmd, COMMAND_HELP) == 0)
+		if (strcmp(cmd, COMMAND_HELP) == 0){
 			print_help();
-		else if (strcmp(cmd, COMMAND_PASSWD) == 0) {
+		} else if (strcmp(cmd, COMMAND_PASSWD) == 0) {
 			if (input_passwd())
 				break;
-		} else if (strcmp(cmd, COMMAND_EXIT) == 0)
+		} else if (strcmp(cmd, COMMAND_CP) == 0) {
+			change_passwd();
+		} else if (strcmp(cmd, COMMAND_EXIT) == 0) {
 			break;
+		}
 	}
 	free(cmd);
-	fclose(passwd_file);
+	free(correct_passwd_md5);
+	free(passwd_file_path);
+	fclose(vp_file);
 	return 0;
 }
