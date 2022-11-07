@@ -16,6 +16,7 @@
 #define MAX_PAYLOAD 1024
 #define PASSWD_MD5_PATH "/.passwd.md5"
 #define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
+#define MSG_AUTH_FLAG_TRUE "true"
 #define COMMAND_HELP "h"
 #define COMMAND_PASSWD "p"
 #define COMMAND_CP "cp"
@@ -42,7 +43,7 @@ void md5_calc(char *passwd, char *dst_str) {
 	return;
 }
 
-void set_auth_flag_true(void) {
+void send_msg_to_kernel(char *msg_str) {
 	struct sockaddr_nl src_addr, dest_addr;
 	struct nlmsghdr *nlh = NULL;
 	struct msghdr msg;
@@ -60,7 +61,7 @@ void set_auth_flag_true(void) {
 	nlh = (struct nlmsghdr *) malloc(NLMSG_SPACE(MAX_PAYLOAD));
 	nlh->nlmsg_pid = 100;
 	nlh->nlmsg_flags = 0;
-	strcpy(NLMSG_DATA(nlh), "");
+	strcpy(NLMSG_DATA(nlh), msg_str);
 	iov.iov_base = (void *)nlh;
 	iov.iov_len = NLMSG_SPACE(MAX_PAYLOAD);
 	dest_addr.nl_family = AF_NETLINK;
@@ -74,6 +75,10 @@ void set_auth_flag_true(void) {
 	sendmsg(sockfd, &msg, 0);
 	close(sockfd);
 	return;
+}
+
+void set_auth_flag_true(void) {
+	send_msg_to_kernel(MSG_AUTH_FLAG_TRUE);
 }
 
 void print_help() {

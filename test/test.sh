@@ -26,11 +26,12 @@ check_dir(){
 }
 
 check_mkdir(){
-    if [[! -d "${vault_apath}/dir"]];
+    if [[ ! -d "${vault_apath}/dir" ]];
     then
         echo "Mkdir Success!"
     else
         echo "Mkdir Failed!"
+	fi
 }
 
 check_unlink(){
@@ -39,6 +40,7 @@ check_unlink(){
         echo "Unlink Failed!"
     else
         echo "Unlink Success!"
+	fi
 }
 
 check_rename(){
@@ -47,6 +49,7 @@ check_rename(){
         echo "Rename Success!"
     else
         echo "Rename Failed!"
+	fi
 }
 
 test_chdir(){

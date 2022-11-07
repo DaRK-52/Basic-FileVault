@@ -37,6 +37,7 @@
 #define NL_PASSWD 25
 #define MAX_LENGTH 256
 #define TIMEOUT 20 * 1000
+#define MSG_AUTH_FLAG_TRUE "true"
 
 // sys_call_fp means system call function pointer
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
@@ -68,12 +69,25 @@ asmlinkage long hooked_unlinkat(struct pt_regs *regs);
 
 asmlinkage long hooked_mkdir(struct pt_regs *regs);
 
-void set_auth_flag(struct sk_buff *__skb) {
+void set_auth_flag(void) {
 	if (auth_flag == PERMITTED)
 		return;
 	auth_flag = PERMITTED;
 	printk("Set auth flag success!\n");
 	start_timer();
+}
+
+void handle_msg_from_user(struct sk_buff *__skb) {
+	struct sk_buff *skb;
+	struct nlmsghdr *nlh;
+	char msg_str[100];
+
+	skb = skb_get(__skb);
+	nlh = nlmsg_hdr(skb);
+	memcpy(msg_str, NLMSG_DATA(nlh), sizeof(msg_str));
+	printk("Message received: %s\n", msg_str);
+	if (strcmp(msg_str, MSG_AUTH_FLAG_TRUE) == 0)
+		set_auth_flag();
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
@@ -116,7 +130,7 @@ void modify_sys_call_table(void) {
 }
 
 void init_nl_auth(void) {
-	struct netlink_kernel_cfg cfg = { .input = set_auth_flag };
+	struct netlink_kernel_cfg cfg = { .input = handle_msg_from_user };
 	nl_sock = netlink_kernel_create(&init_net, NL_PASSWD, &cfg);
 	printk("nl_sock = %ld\n", (unsigned long) nl_sock);
 	printk("Netlink Authorization inited!\n");
