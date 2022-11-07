@@ -223,7 +223,9 @@ int main(int argc, char *argv[]) {
 	just_for_test(argc);
 
 	print_help();
+	printf("Error: %s\n", strerror(errno));
 	get_correct_passwd_md5();
+	
 	while (TRUE) {
 		printf("> ");
 		scanf("%s", cmd);

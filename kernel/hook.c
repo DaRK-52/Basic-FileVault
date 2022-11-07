@@ -32,6 +32,7 @@
 #include <linux/namei.h>
 
 #define VAULT_PATH "/home/zhuwenjun/secret"
+#define PASSWD_MD5_PATH "/.passwd.md5"
 #define SLASH "/"
 #define SECRET "secret"
 #define MAX_LENGTH 256
@@ -87,12 +88,17 @@ char* convert_to_absolute_path(char *dst_path) {
 }
 
 asmlinkage long hooked_openat(struct pt_regs *regs) {
-	/* 
 	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+	
 	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
-	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) == 0) {
-		printk("Attempt to intrude secret directory\n");
-	} */
+	name = convert_to_absolute_path(name);
+	if (check_privilege(name) == UNPERMITTED) {
+		if (strncmp(name, "/home/zhuwenjun/secret/.passwd.md5", 34) == 0)
+			goto end;
+		printk("Permission Denied(openat). Consider using Basic File Vault to get permission.\n");
+		return -1;
+	}
+end:
 	return old_openat(regs);
 }
 
@@ -102,7 +108,7 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
 	name = convert_to_absolute_path(name);
 	if (name != NULL && check_privilege(name) == UNPERMITTED) {
-		printk("Permission Denied. Consider using Basic File Vault to get permission.\n");
+		printk("Permission Denied(chdir). Consider using Basic File Vault to get permission.\n");
 		return -1;
 	}
 	// printk("Chdir to %s\n", name);

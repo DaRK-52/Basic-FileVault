@@ -46,6 +46,7 @@ typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
 unsigned long *sys_call_table = NULL;
 char vault_path[MAX_LENGTH];
+extern sys_call_fp old_open;
 extern sys_call_fp old_openat;
 extern sys_call_fp old_chdir;
 extern sys_call_fp old_rename;
