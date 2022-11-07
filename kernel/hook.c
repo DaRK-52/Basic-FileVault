@@ -93,7 +93,7 @@ char* convert_to_absolute_path(char *dst_path) {
 
 // need reconsider how to authenticate vault manager
 int is_open_by_manager(void) {
-	if (strcmp(current->comm, VAULT_MANAGER, strlen(VAULT_MANAGER)) == 0)
+	if (strncmp(current->comm, VAULT_MANAGER, strlen(VAULT_MANAGER)) == 0)
 		return 1;
 	return 0;
 }
@@ -109,9 +109,11 @@ asmlinkage long hooked_openat(struct pt_regs *regs) {
 			goto end;
 		}
 		printk("Permission Denied(openat). Consider using Basic File Vault to get permission.\n");
+		kfree(name);
 		return -1;
 	}
 end:
+	kfree(name);
 	return old_openat(regs);
 }
 
@@ -122,6 +124,7 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 	name = convert_to_absolute_path(name);
 	if (name != NULL && check_privilege(name) == UNPERMITTED) {
 		printk("Permission Denied(chdir). Consider using Basic File Vault to get permission.\n");
+		kfree(name);
 		return -1;
 	}
 	kfree(name);
@@ -129,13 +132,52 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 }
 
 asmlinkage long hooked_rename(struct pt_regs *regs) {
+	char *src_name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL),
+		*dst_name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+
+	strncpy_from_user(src_name, (char *)regs->di, MAX_LENGTH);
+	strncpy_from_user(dst_name, (char *)regs->si, MAX_LENGTH);
+	src_name = convert_to_absolute_path(src_name);
+	dst_name = convert_to_absolute_path(dst_name);\
+	printk("src name: %s, dst name: %s\n", src_name, dst_name);
+	if (check_privilege(src_name) == UNPERMITTED || check_privilege(dst_name) == UNPERMITTED) {
+		printk("Permission Denied(rename). Consider using Basic File Vault to get permission.\n");
+		kfree(src_name);
+		kfree(dst_name);
+		return -1;
+	}
+	
+	kfree(src_name);
+	kfree(dst_name);
 	return old_rename(regs);
 }
 
 asmlinkage long hooked_unlinkat(struct pt_regs *regs) {
+	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+
+	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
+	name = convert_to_absolute_path(name);
+	if (check_privilege(name) == UNPERMITTED) {
+		printk("Permission Denied(unlinkat). Consider using Basic File Vault to get permission.\n");
+		kfree(name);
+		return -1;
+	}
+
+	kfree(name);
 	return old_unlinkat(regs);
 }
 
 asmlinkage long hooked_mkdir(struct pt_regs *regs) {
+	char *name = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+
+	strncpy_from_user(name, (char *)regs->di, MAX_LENGTH);
+	name = convert_to_absolute_path(name);
+	if (check_privilege(name) == UNPERMITTED) {
+		printk("Permission Denied(unlinkat). Consider using Basic File Vault to get permission.\n");
+		kfree(name);
+		return -1;
+	}
+
+	kfree(name);
 	return old_mkdir(regs);
 }

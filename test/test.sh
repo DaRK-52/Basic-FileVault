@@ -16,7 +16,7 @@ unlock_vault(){
     ./vault_manager 123456
 }
 
-check_dir(){
+check_chdir(){
     if [[ "`pwd`" != "${vault_apath}" ]];
     then
         echo "Chdir Failed!"
@@ -54,16 +54,16 @@ check_rename(){
 
 test_chdir(){
     cd ${vault_apath}
-    check_dir
+    check_chdir
     cd ~
     cd ${vault_rpath}
-    check_dir
+    check_chdir
     unlock_vault
     cd ${vault_apath}
-    check_dir
+    check_chdir
     cd ~
     cd ${vault_rpath}
-    check_dir
+    check_chdir
 }
 
 test_open(){
