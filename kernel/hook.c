@@ -47,11 +47,11 @@ sys_call_fp old_chdir = NULL;
 sys_call_fp old_rename = NULL;
 sys_call_fp old_unlinkat = NULL;
 sys_call_fp old_mkdir = NULL;
+extern char vault_path[MAX_LENGTH];
 
 // name means the absolute path name like /etc/passwd
 int check_privilege(char *name) {
-	printk("name: %s\n", name);
-	if (strncmp(name, VAULT_PATH, strlen(VAULT_PATH)) != 0)
+	if (strncmp(name, vault_path, strlen(vault_path)) != 0)
 		return PERMITTED;
 	printk("auth_flag = %d\n", auth_flag);
 	return auth_flag;

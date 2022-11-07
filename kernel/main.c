@@ -32,6 +32,7 @@
 #define LOG_LEVEL KERN_ALERT
 #define KPROBE_PRE_HANDLER(fname) static int __kprobes fname(struct kprobe *p, struct pt_regs *regs)
 #define VAULT_PATH "/home/zhuwenjun/secret"
+#define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
 #define PERMITTED 1
 #define UNPERMITTED 0
 #define NL_PASSWD 25
@@ -43,6 +44,7 @@
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
 unsigned long *sys_call_table = NULL;
+char vault_path[MAX_LENGTH];
 extern sys_call_fp old_openat;
 extern sys_call_fp old_chdir;
 extern sys_call_fp old_rename;
@@ -107,6 +109,21 @@ void start_timer(void) {
 	add_timer(&timer);
 }
 
+void read_vault_path(void) {
+	struct file *vp_fp;
+	mm_segment_t fs;
+	loff_t pos;
+
+	vp_fp = filp_open(VP_FILE_PATH, O_RDWR, 0777);
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_read(vp_fp, vault_path, sizeof(vault_path), &pos);
+	filp_close(vp_fp, NULL);
+	set_fs(fs);
+	return;
+}
+
 void modify_sys_call_table(void) {
 	// save old system call
 	old_openat = ((sys_call_fp *)(sys_call_table))[__NR_openat];
@@ -152,6 +169,7 @@ static int hooked_init(void) {
 	printk(LOG_LEVEL "init");
 	init_timer();
 	find_kln_addr();
+	read_vault_path();
 	sys_call_table = find_sys_call_table();
 	if(sys_call_table == NULL) {
 		printk("System call table not found.\n");
