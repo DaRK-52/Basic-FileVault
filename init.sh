@@ -10,3 +10,7 @@ mkdir `pwd`/secret
 touch `pwd`/secret/$passwd_md5_file
 # default key is 123456
 echo -n "e10adc3949ba59abbe56e057f20f883e"> `pwd`/secret/$passwd_md5_file
+cd -
+cd kernel
+make
+insmod basic_filevault.ko
