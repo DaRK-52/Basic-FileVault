@@ -32,7 +32,8 @@
 #include <linux/namei.h>
 
 #define VAULT_PATH "/home/zhuwenjun/secret"
-#define PASSWD_MD5_PATH "/.passwd.md5"
+#define VAULT_MANAGER "vault_manager"
+#define PASSWD_MD5_PATH "/home/zhuwenjun/secret/.passwd.md5"
 #define SLASH "/"
 #define SECRET "secret"
 #define MAX_LENGTH 256
@@ -52,7 +53,10 @@ extern char vault_path[MAX_LENGTH];
 
 // name means the absolute path name like /etc/passwd
 int check_privilege(char *name) {
-	if (strncmp(name, vault_path, strlen(vault_path)) != 0)
+	// second condition avoid different directory with same prefix
+	// like /home/zhuwenjun/secret and /home/zhuwenjun/secret2
+	if (strncmp(name, vault_path, strlen(vault_path)) != 0 
+		|| (strlen(name) > strlen(vault_path) && strncmp(name + strlen(vault_path), SLASH, strlen(SLASH) != 0)))
 		return PERMITTED;
 	printk("auth_flag = %d\n", auth_flag);
 	return auth_flag;
@@ -83,8 +87,15 @@ char* convert_to_absolute_path(char *dst_path) {
 	}
 	
 	strcat(dst_path, buf);
-	printk("dst_path: %s\n", dst_path);
+	// printk("dst_path: %s\n", dst_path);
 	return dst_path;
+}
+
+// need reconsider how to authenticate vault manager
+int is_open_by_manager(void) {
+	if (strcmp(current->comm, VAULT_MANAGER, strlen(VAULT_MANAGER)) == 0)
+		return 1;
+	return 0;
 }
 
 asmlinkage long hooked_openat(struct pt_regs *regs) {
@@ -93,8 +104,10 @@ asmlinkage long hooked_openat(struct pt_regs *regs) {
 	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
 	name = convert_to_absolute_path(name);
 	if (check_privilege(name) == UNPERMITTED) {
-		if (strncmp(name, "/home/zhuwenjun/secret/.passwd.md5", 34) == 0)
+		if (strncmp(name, PASSWD_MD5_PATH, strlen(PASSWD_MD5_PATH)) == 0 && is_open_by_manager()) {
+			printk("current command: %s\n", current->comm);
 			goto end;
+		}
 		printk("Permission Denied(openat). Consider using Basic File Vault to get permission.\n");
 		return -1;
 	}
@@ -111,7 +124,6 @@ asmlinkage long hooked_chdir(struct pt_regs *regs) {
 		printk("Permission Denied(chdir). Consider using Basic File Vault to get permission.\n");
 		return -1;
 	}
-	// printk("Chdir to %s\n", name);
 	kfree(name);
 	return old_chdir(regs);
 }

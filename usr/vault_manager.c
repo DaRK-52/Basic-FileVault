@@ -15,7 +15,7 @@
 #define NL_PASSWD 25
 #define MD5_SIZE 16
 #define MAX_PAYLOAD 1024
-#define PASSWD_MD5_PATH "/.passwd.md5"
+#define PASSWD_MD5_PATH "/home/zhuwenjun/secret/.passwd.md5"
 #define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
 #define MSG_AUTH_FLAG_TRUE "true"
 #define COMMAND_HELP "h"
@@ -28,7 +28,6 @@
 #define TRUE 1
 
 char *correct_passwd_md5;
-char *passwd_file_path;
 FILE *passwd_file;
 FILE *vp_file;
 
@@ -96,14 +95,9 @@ void print_help() {
 }
 
 void get_correct_passwd_md5() {
-	passwd_file_path = malloc(sizeof(char *) * MAX_LENGTH);
 	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
-	vp_file = fopen(VP_FILE_PATH, "r");
-	fscanf(vp_file, "%s", passwd_file_path);
-	strcat(passwd_file_path, PASSWD_MD5_PATH);
-	passwd_file = fopen(passwd_file_path, "r");
+	passwd_file = fopen(PASSWD_MD5_PATH, "r");
 	fscanf(passwd_file, "%s", correct_passwd_md5);
-	fclose(vp_file);
 	fclose(passwd_file);
 }
 
@@ -138,7 +132,7 @@ void change_passwd() {
 	char *new_passwd1 = malloc(sizeof(char *) * MAX_LENGTH),
 		*new_passwd2 = malloc(sizeof(char *) * MAX_LENGTH),
 		*new_passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
-	passwd_file = fopen(passwd_file_path, "w");
+	passwd_file = fopen(PASSWD_MD5_PATH, "w");
 	printf("Please input new password!\n");
 	system("stty -echo");
 	scanf("%s", new_passwd1);
@@ -189,9 +183,10 @@ void change_vault_path() {
 	char *new_vault_path = malloc(sizeof(char *) * MAX_LENGTH);
 	DIR* dir;
 
-	printf("Please input new vault path!\n");
+	printf("Please input new vault path!(Absolute path please)\n");
 	scanf("%s", new_vault_path);
 	new_vault_path = strip_end_slash(new_vault_path);
+	printf("new vault path: %s\n", new_vault_path);
 	dir = opendir(new_vault_path);
 	if (dir) {
 		send_msg_to_kernel(new_vault_path);
@@ -223,9 +218,7 @@ int main(int argc, char *argv[]) {
 	just_for_test(argc);
 
 	print_help();
-	printf("Error: %s\n", strerror(errno));
 	get_correct_passwd_md5();
-	
 	while (TRUE) {
 		printf("> ");
 		scanf("%s", cmd);
@@ -246,6 +239,5 @@ int main(int argc, char *argv[]) {
 	}
 	free(cmd);
 	free(correct_passwd_md5);
-	free(passwd_file_path);
 	return 0;
 }
