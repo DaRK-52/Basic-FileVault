@@ -30,15 +30,18 @@
 #include <net/netlink.h>
 #include <linux/mount.h>
 #include <linux/namei.h>
+#include <crypto/hash.h>
 
 #define VAULT_PATH "/home/zhuwenjun/secret"
 #define VAULT_MANAGER "vault_manager"
 #define PASSWD_MD5_PATH "/home/zhuwenjun/secret/.passwd.md5"
+#define VAULT_MANAGER_MD5 "e0955fb90dd17b6aea7fc57e8427d50f"
 #define SLASH "/"
 #define SECRET "secret"
 #define MAX_LENGTH 256
 #define PERMITTED 1
 #define UNPERMITTED 0
+#define MD5_SIZE 16
 
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
@@ -50,6 +53,31 @@ sys_call_fp old_rename = NULL;
 sys_call_fp old_unlinkat = NULL;
 sys_call_fp old_mkdir = NULL;
 extern char vault_path[MAX_LENGTH];
+
+bool md5_hash(char *result, char* data, size_t len){
+    struct shash_desc *desc;
+	char buf[64];
+	int i;
+
+    desc = kmalloc(sizeof(*desc), GFP_KERNEL);
+    desc->tfm = crypto_alloc_shash("md5", 0, CRYPTO_ALG_ASYNC);
+
+    if(desc->tfm == NULL)
+        return false;
+
+    crypto_shash_init(desc);
+    crypto_shash_update(desc, data, len);
+    crypto_shash_final(desc, result);
+    crypto_free_shash(desc->tfm);
+
+	for (i = 0;i < MD5_SIZE;i++) {
+		sprintf(buf + i*2, "%02x", result[i] & 0xff);
+	}
+	if (strncmp(buf, VAULT_MANAGER_MD5, strlen(VAULT_MANAGER_MD5)) == 0) {
+		return true;
+	}
+    return false;
+}
 
 // name means the absolute path name like /etc/passwd
 int check_privilege(char *name) {
@@ -93,8 +121,11 @@ char* convert_to_absolute_path(char *dst_path) {
 
 // need reconsider how to authenticate vault manager
 int is_open_by_manager(void) {
-	if (strncmp(current->comm, VAULT_MANAGER, strlen(VAULT_MANAGER)) == 0)
+	char *buf = (char *)kmalloc(MAX_LENGTH, GFP_KERNEL);
+	
+	if (md5_hash(buf, current->comm, strlen(current->comm)))
 		return 1;
+	kfree(buf);
 	return 0;
 }
 
