@@ -9,6 +9,7 @@
 #include <linux/netlink.h>
 #include <linux/socket.h>
 #include <errno.h>
+#include <dirent.h>
 #include <openssl/md5.h>
 
 #define NL_PASSWD 25
@@ -20,7 +21,9 @@
 #define COMMAND_HELP "h"
 #define COMMAND_PASSWD "p"
 #define COMMAND_CP "cp"
+#define COMMAND_CVP "cvp"
 #define COMMAND_EXIT "exit"
+#define SLASH "/"
 #define MAX_LENGTH 64
 #define TRUE 1
 
@@ -100,6 +103,7 @@ void get_correct_passwd_md5() {
 	strcat(passwd_file_path, PASSWD_MD5_PATH);
 	passwd_file = fopen(passwd_file_path, "r");
 	fscanf(passwd_file, "%s", correct_passwd_md5);
+	fclose(vp_file);
 	fclose(passwd_file);
 }
 
@@ -153,9 +157,64 @@ void change_passwd() {
 	fclose(passwd_file);
 }
 
+char *strip_end_slash(char *s) {
+	int length = strlen(s);
+	char *tmp = malloc(sizeof(char *) * MAX_LENGTH);
+	
+	if (length <= 0 || strcmp(s + length - 1, SLASH) != 0)
+		return s;
+	for (int i = length; i > 0; i--) {
+		if (strncmp(s + i - 1, SLASH, strlen(SLASH)) != 0) {
+			strncpy(tmp, s, i);
+			break;
+		}
+	}
+	return tmp;
+}
+
+/*
+	Set vault path in the file ~/.vault.path
+*/
+void set_vault_path(char *new_vault_path) {
+	vp_file = fopen(VP_FILE_PATH, "w");
+	fprintf(vp_file, "%s", new_vault_path);
+	fclose(vp_file);
+}
+
+/*
+	This function exists some potential security problems
+	like injecting, but it doesn't matter. ^_^
+*/
+void change_vault_path() {
+	char *new_vault_path = malloc(sizeof(char *) * MAX_LENGTH);
+	DIR* dir;
+
+	printf("Please input new vault path!\n");
+	scanf("%s", new_vault_path);
+	new_vault_path = strip_end_slash(new_vault_path);
+	dir = opendir(new_vault_path);
+	if (dir) {
+		send_msg_to_kernel(new_vault_path);
+		set_vault_path(new_vault_path);
+		printf("Change vault path successfully!\n");
+	} else if (errno == ENOENT) {
+		if(mkdir(new_vault_path, 0777) == -1) {
+			printf("Failed to create new directory: %s\n", new_vault_path);
+		} else {
+			send_msg_to_kernel(new_vault_path);
+			set_vault_path(new_vault_path);
+			printf("Create directory %s and change vault path successfully!\n", new_vault_path);
+		}
+	} else {
+		printf("Invalid path or other problems!\n");
+	}
+}
+
 void just_for_test(int argc) {
-	if (argc > 1)
+	if (argc > 1) {
 		set_auth_flag_true();
+		exit(0);
+	}
 }
 
 int main(int argc, char *argv[]) {
@@ -175,13 +234,16 @@ int main(int argc, char *argv[]) {
 				break;
 		} else if (strcmp(cmd, COMMAND_CP) == 0) {
 			change_passwd();
+		} else if (strcmp(cmd, COMMAND_CVP) == 0) {
+			change_vault_path();
 		} else if (strcmp(cmd, COMMAND_EXIT) == 0) {
 			break;
+		} else {
+			printf("Unkown commands!\n");
 		}
 	}
 	free(cmd);
 	free(correct_passwd_md5);
 	free(passwd_file_path);
-	fclose(vp_file);
 	return 0;
 }

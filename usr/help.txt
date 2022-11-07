@@ -4,4 +4,5 @@ Usage: The options are as followed.
         h    print basic help of Vault Manager.
         p    input the password so that you can access to vault.
         cp   change the password.
+        cvp  change vault path
         exit exit the program

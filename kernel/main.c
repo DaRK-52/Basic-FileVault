@@ -39,6 +39,7 @@
 #define MAX_LENGTH 256
 #define TIMEOUT 20 * 1000
 #define MSG_AUTH_FLAG_TRUE "true"
+#define SLASH "/"
 
 // sys_call_fp means system call function pointer
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
@@ -79,6 +80,11 @@ void set_auth_flag(void) {
 	start_timer();
 }
 
+void set_vault_path(char *new_vault_path) {
+	strcpy(vault_path, new_vault_path);
+	printk("New Vault Path: %s\n", vault_path);
+}
+
 void handle_msg_from_user(struct sk_buff *__skb) {
 	struct sk_buff *skb;
 	struct nlmsghdr *nlh;
@@ -88,8 +94,11 @@ void handle_msg_from_user(struct sk_buff *__skb) {
 	nlh = nlmsg_hdr(skb);
 	memcpy(msg_str, NLMSG_DATA(nlh), sizeof(msg_str));
 	printk("Message received: %s\n", msg_str);
-	if (strcmp(msg_str, MSG_AUTH_FLAG_TRUE) == 0)
+	if (strcmp(msg_str, MSG_AUTH_FLAG_TRUE) == 0) {
 		set_auth_flag();
+	} else if (strncmp(msg_str, SLASH, strlen(SLASH)) == 0) {
+		set_vault_path(msg_str);
+	}
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
@@ -98,8 +107,8 @@ void reset_auth_flag(struct timer_list *timer01) {
 }
 
 void init_timer(void) {
-	// timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
-	// timer_setup(&timer, reset_auth_flag, 0);
+	timer.expires = jiffies + msecs_to_jiffies(TIMEOUT);
+	timer_setup(&timer, reset_auth_flag, 0);
 }
 
 void start_timer(void) {
