@@ -32,9 +32,7 @@
 #include <linux/namei.h>
 #include <crypto/hash.h>
 
-#define VAULT_PATH "/home/zhuwenjun/secret"
 #define VAULT_MANAGER "vault_manager"
-#define PASSWD_MD5_PATH "/home/zhuwenjun/secret/.passwd.md5"
 #define VAULT_MANAGER_MD5 "e0955fb90dd17b6aea7fc57e8427d50f"
 #define SLASH "/"
 #define SECRET "secret"
@@ -53,6 +51,7 @@ sys_call_fp old_rename = NULL;
 sys_call_fp old_unlinkat = NULL;
 sys_call_fp old_mkdir = NULL;
 extern char vault_path[MAX_LENGTH];
+extern char passwd_md5_path[MAX_LENGTH];
 
 bool md5_hash(char *result, char* data, size_t len){
     struct shash_desc *desc;
@@ -135,7 +134,7 @@ asmlinkage long hooked_openat(struct pt_regs *regs) {
 	strncpy_from_user(name, (char *)regs->si, MAX_LENGTH);
 	name = convert_to_absolute_path(name);
 	if (check_privilege(name) == UNPERMITTED) {
-		if (strncmp(name, PASSWD_MD5_PATH, strlen(PASSWD_MD5_PATH)) == 0 && is_open_by_manager()) {
+		if (strncmp(name, passwd_md5_path, strlen(passwd_md5_path)) == 0 && is_open_by_manager()) {
 			printk("current command: %s\n", current->comm);
 			goto end;
 		}

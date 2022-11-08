@@ -31,8 +31,7 @@
 
 #define LOG_LEVEL KERN_ALERT
 #define KPROBE_PRE_HANDLER(fname) static int __kprobes fname(struct kprobe *p, struct pt_regs *regs)
-#define VAULT_PATH "/home/zhuwenjun/secret"
-#define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
+#define ETC_PASSWD "/etc/passwd"
 #define PERMITTED 1
 #define UNPERMITTED 0
 #define NL_PASSWD 25
@@ -46,6 +45,9 @@ typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 
 unsigned long *sys_call_table = NULL;
 char vault_path[MAX_LENGTH];
+char vp_file_path[MAX_LENGTH];
+char home_path[MAX_LENGTH];
+char passwd_md5_path[MAX_LENGTH];
 extern sys_call_fp old_open;
 extern sys_call_fp old_openat;
 extern sys_call_fp old_chdir;
@@ -124,7 +126,7 @@ void read_vault_path(void) {
 	mm_segment_t fs;
 	loff_t pos;
 
-	vp_fp = filp_open(VP_FILE_PATH, O_RDWR, 0777);
+	vp_fp = filp_open(vp_file_path, O_RDWR, 0777);
 	fs = get_fs();
 	set_fs(KERNEL_DS);
 	pos = 0;
@@ -132,6 +134,47 @@ void read_vault_path(void) {
 	filp_close(vp_fp, NULL);
 	set_fs(fs);
 	return;
+}
+
+void get_files_path(void) {
+	struct file *etc_fp;
+	mm_segment_t fs;
+	loff_t pos;
+	char buf[4096], buf2[MAX_LENGTH];
+	int i, length1, length2;
+
+	etc_fp = filp_open(ETC_PASSWD, O_RDONLY, 0644);
+	fs = get_fs();
+	set_fs(KERNEL_DS);
+	pos = 0;
+	vfs_read(etc_fp, buf, sizeof(buf), &pos);
+	filp_close(etc_fp, NULL);
+	set_fs(fs);
+	sprintf(buf2, "%ld", current->loginuid);
+	length1 = strlen(buf);
+	length2 = strlen(buf2);
+
+	for (i = 0;i < length1;i++) {
+		if (strncmp(buf + i, buf2, length2) == 0) {
+			printk("i = %d break\n", i);
+			break;
+		}
+	}
+	for(; i < length1 - 1;i++) {
+		if (strncmp(buf + i, ":", 1) == 0 && strncmp(buf + i + 1, SLASH, strlen(SLASH)) == 0) {
+			int j;
+			for (j = i + 1;j < length1 - 1;j++) {
+				if (strncmp(buf + j, ":", 1) == 0)
+					break;
+			}
+			strncpy(home_path, buf + i + 1, j - i - 1);
+			strncpy(passwd_md5_path, buf + i + 1, j - i - 1);
+			strncpy(vp_file_path, buf + i + 1, j - i - 1);
+			strcat(passwd_md5_path, "/secret/.passwd.md5");
+			strcat(vp_file_path, "/.vault.path");
+			break;
+		}
+	}
 }
 
 void modify_sys_call_table(void) {
@@ -179,6 +222,7 @@ static int hooked_init(void) {
 	printk(LOG_LEVEL "init");
 	init_timer();
 	find_kln_addr();
+	get_files_path();
 	read_vault_path();
 	sys_call_table = find_sys_call_table();
 	if(sys_call_table == NULL) {
