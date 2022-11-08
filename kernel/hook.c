@@ -32,14 +32,14 @@
 #include <linux/namei.h>
 #include <crypto/hash.h>
 
-#define VAULT_MANAGER "vault_manager"
-#define VAULT_MANAGER_MD5 "e0955fb90dd17b6aea7fc57e8427d50f"
 #define SLASH "/"
 #define SECRET "secret"
-#define MAX_LENGTH 256
+#define VAULT_MANAGER "vault_manager"
+#define VAULT_MANAGER_MD5 "e0955fb90dd17b6aea7fc57e8427d50f"
+#define MD5_SIZE 16
 #define PERMITTED 1
 #define UNPERMITTED 0
-#define MD5_SIZE 16
+#define MAX_LENGTH 256
 
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
 

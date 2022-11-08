@@ -15,8 +15,6 @@
 #define NL_PASSWD 25
 #define MD5_SIZE 16
 #define MAX_PAYLOAD 1024
-#define PASSWD_MD5_PATH "/home/zhuwenjun/secret/.passwd.md5"
-#define VP_FILE_PATH "/home/zhuwenjun/.vault.path"
 #define MSG_AUTH_FLAG_TRUE "true"
 #define COMMAND_HELP "h"
 #define COMMAND_PASSWD "p"
@@ -28,6 +26,8 @@
 #define TRUE 1
 
 char *correct_passwd_md5;
+char *passwd_md5_path;
+char *vp_file_path;
 FILE *passwd_file;
 FILE *vp_file;
 
@@ -43,6 +43,21 @@ void md5_calc(char *passwd, char *dst_str) {
 		sprintf(dst_str + i*2, "%02x", md5_value[i]);
 	}
 	return;
+}
+
+char *strip_end_slash(char *s) {
+	int length = strlen(s);
+	char *tmp = malloc(sizeof(char *) * MAX_LENGTH);
+	
+	if (length <= 0 || strcmp(s + length - 1, SLASH) != 0)
+		return s;
+	for (int i = length; i > 0; i--) {
+		if (strncmp(s + i - 1, SLASH, strlen(SLASH)) != 0) {
+			strncpy(tmp, s, i);
+			break;
+		}
+	}
+	return tmp;
 }
 
 void send_msg_to_kernel(char *msg_str) {
@@ -94,13 +109,6 @@ void print_help() {
 	fclose(help_file);
 }
 
-void get_correct_passwd_md5() {
-	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
-	passwd_file = fopen(PASSWD_MD5_PATH, "r");
-	fscanf(passwd_file, "%s", correct_passwd_md5);
-	fclose(passwd_file);
-}
-
 int input_passwd() {
 	char *passwd = malloc(sizeof(char *) * MAX_LENGTH), *passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
 	int count = 0;
@@ -132,7 +140,7 @@ void change_passwd() {
 	char *new_passwd1 = malloc(sizeof(char *) * MAX_LENGTH),
 		*new_passwd2 = malloc(sizeof(char *) * MAX_LENGTH),
 		*new_passwd_md5 = malloc(sizeof(char *) * MAX_LENGTH);
-	passwd_file = fopen(PASSWD_MD5_PATH, "w");
+	passwd_file = fopen(passwd_md5_path, "w");
 	printf("Please input new password!\n");
 	system("stty -echo");
 	scanf("%s", new_passwd1);
@@ -151,26 +159,11 @@ void change_passwd() {
 	fclose(passwd_file);
 }
 
-char *strip_end_slash(char *s) {
-	int length = strlen(s);
-	char *tmp = malloc(sizeof(char *) * MAX_LENGTH);
-	
-	if (length <= 0 || strcmp(s + length - 1, SLASH) != 0)
-		return s;
-	for (int i = length; i > 0; i--) {
-		if (strncmp(s + i - 1, SLASH, strlen(SLASH)) != 0) {
-			strncpy(tmp, s, i);
-			break;
-		}
-	}
-	return tmp;
-}
-
 /*
 	Set vault path in the file ~/.vault.path
 */
 void set_vault_path(char *new_vault_path) {
-	vp_file = fopen(VP_FILE_PATH, "w");
+	vp_file = fopen(vp_file_path, "w");
 	fprintf(vp_file, "%s", new_vault_path);
 	fclose(vp_file);
 }
@@ -205,6 +198,24 @@ void change_vault_path() {
 	}
 }
 
+void get_correct_passwd_md5() {
+	correct_passwd_md5 = malloc(sizeof(char *) * 2 * MD5_SIZE);
+	passwd_file = fopen(passwd_md5_path, "r");
+	fscanf(passwd_file, "%s", correct_passwd_md5);
+	fclose(passwd_file);
+}
+
+void get_files_path() {
+	char *home = getenv("HOME");
+	
+	passwd_md5_path = malloc(sizeof(char *) * MAX_LENGTH);
+	vp_file_path = malloc(sizeof(char *) * MAX_LENGTH);
+	strcpy(passwd_md5_path, home);
+	strcpy(vp_file_path, home);
+	strcat(passwd_md5_path, "/secret/.passwd.md5");
+	strcat(vp_file_path, "/.vault.path");
+}
+
 void just_for_test(int argc) {
 	if (argc > 1) {
 		set_auth_flag_true();
@@ -218,6 +229,7 @@ int main(int argc, char *argv[]) {
 	just_for_test(argc);
 
 	print_help();
+	get_files_path();
 	get_correct_passwd_md5();
 	while (TRUE) {
 		printf("> ");

@@ -31,14 +31,14 @@
 
 #define LOG_LEVEL KERN_ALERT
 #define KPROBE_PRE_HANDLER(fname) static int __kprobes fname(struct kprobe *p, struct pt_regs *regs)
+#define SLASH "/"
 #define ETC_PASSWD "/etc/passwd"
+#define MSG_AUTH_FLAG_TRUE "true"
 #define PERMITTED 1
 #define UNPERMITTED 0
 #define NL_PASSWD 25
 #define MAX_LENGTH 256
 #define TIMEOUT 20 * 1000
-#define MSG_AUTH_FLAG_TRUE "true"
-#define SLASH "/"
 
 // sys_call_fp means system call function pointer
 typedef asmlinkage long (*sys_call_fp)(struct pt_regs *regs);
