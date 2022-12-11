@@ -102,6 +102,7 @@ void handle_msg_from_user(struct sk_buff *__skb) {
 	} else if (strncmp(msg_str, SLASH, strlen(SLASH)) == 0) {
 		set_vault_path(msg_str);
 	}
+	kfree_skb(skb);
 }
 
 void reset_auth_flag(struct timer_list *timer01) {
