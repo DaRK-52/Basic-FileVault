@@ -240,9 +240,11 @@ int main(int argc, char *argv[]) {
 			if (input_passwd())
 				break;
 		} else if (strcmp(cmd, COMMAND_CP) == 0) {
-			change_passwd();
+			if (input_passwd())
+				change_passwd();
 		} else if (strcmp(cmd, COMMAND_CVP) == 0) {
-			change_vault_path();
+			if (input_passwd())
+				change_vault_path();
 		} else if (strcmp(cmd, COMMAND_EXIT) == 0) {
 			break;
 		} else {
